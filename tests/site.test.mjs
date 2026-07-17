@@ -17,11 +17,11 @@ test("production build contains a deployable index and bundled asset", async () 
 });
 
 test("daily review data keeps bank quotes separate and contains no holding fields", async () => {
-  const { reviews } = await import("../src/content/reviews.js");
   const source = await readFile(
-    path.join(root, "src/content/reviews.js"),
+    path.join(root, "src/content/reviews.json"),
     "utf8",
   );
+  const reviews = JSON.parse(source);
 
   assert.ok(reviews.length > 0);
   assert.match(reviews[0].date, /^\d{4}-\d{2}-\d{2}$/);
@@ -32,6 +32,53 @@ test("daily review data keeps bank quotes separate and contains no holding field
     "source",
   ]);
   assert.doesNotMatch(source, /bankCard|accountNumber|holdingAmount|profitAmount/);
+});
+
+test("review helpers validate, normalize and upsert entries", async () => {
+  const {
+    validateReview,
+    normalizeReview,
+    upsertReview,
+    formatDisplayDate,
+    emptyReview,
+  } = await import("../src/lib/reviewsUtils.js");
+
+  assert.equal(formatDisplayDate("2026-07-17"), "2026 年 7 月 17 日");
+
+  const draft = emptyReview("2026-07-17");
+  draft.summary = "测试总结";
+  draft.framework = draft.framework.map((item) => ({
+    ...item,
+    text: `${item.label}内容`,
+  }));
+  assert.deepEqual(validateReview(draft), []);
+
+  const badDate = { ...draft, date: "2026-02-30" };
+  assert.ok(validateReview(badDate).length > 0);
+  assert.ok(validateReview({ ...draft, summary: " " }).length > 0);
+
+  const normalized = normalizeReview(draft);
+  assert.equal(normalized.displayDate, "2026 年 7 月 17 日");
+  assert.deepEqual(Object.keys(normalized.icbcQuote), [
+    "accumulationPrice",
+    "redemptionPrice",
+    "recordedAt",
+    "source",
+  ]);
+  assert.equal(normalized.icbcQuote.accumulationPrice, "—");
+  assert.equal(normalized.icbcQuote.recordedAt, "待记录");
+
+  const existing = [{ date: "2026-07-16", title: "旧" }];
+  const prepended = upsertReview(existing, normalized);
+  assert.equal(prepended.length, 2);
+  assert.equal(prepended[0].date, "2026-07-17");
+
+  const replaced = upsertReview(prepended, {
+    ...normalized,
+    title: "改后的标题",
+  });
+  assert.equal(replaced.length, 2);
+  assert.equal(replaced[0].title, "改后的标题");
 });
 
 test("public copy distinguishes the reference market from the bank product", async () => {

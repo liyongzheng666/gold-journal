@@ -1155,3 +1155,196 @@ footer > a {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* ---------- 复盘编辑器（管理） ---------- */
+
+.admin-link {
+  display: block;
+  margin: 0 auto;
+  padding: 6px 0 40px;
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.admin-link:hover {
+  color: var(--gold);
+  opacity: 1;
+}
+
+.editor-panel {
+  width: min(var(--page-width), calc(100% - 48px));
+  margin: 0 auto 64px;
+  padding: 34px;
+  border: 1px solid var(--line-strong);
+  background: var(--white);
+  box-shadow: 22px 22px 0 rgba(168, 121, 43, 0.08);
+}
+
+.editor-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.editor-panel-header h3 {
+  font-family: var(--serif);
+  font-size: 22px;
+}
+
+.editor-panel-actions {
+  display: flex;
+  gap: 18px;
+}
+
+.editor-panel button.text-link {
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  background: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.editor-panel button.text-link:hover {
+  color: var(--gold);
+}
+
+.editor-hint {
+  margin-bottom: 14px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.editor-hint code {
+  padding: 2px 6px;
+  background: var(--paper);
+  font-size: 12px;
+}
+
+.editor-token-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.editor-token-row input {
+  flex: 1 1 260px;
+}
+
+.editor-privacy {
+  margin-bottom: 18px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--gold);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.editor-form {
+  display: grid;
+  gap: 18px;
+}
+
+.editor-form label {
+  display: grid;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.editor-form input,
+.editor-form select,
+.editor-form textarea,
+.editor-token-row input {
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper-light);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.editor-form input:focus,
+.editor-form select:focus,
+.editor-form textarea:focus,
+.editor-token-row input:focus {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 1px;
+}
+
+.editor-form textarea {
+  resize: vertical;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.editor-quote {
+  padding: 18px;
+  border: 1px solid var(--line);
+}
+
+.editor-quote legend {
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.editor-errors {
+  padding: 12px 16px 12px 32px;
+  border: 1px solid rgba(160, 55, 40, 0.4);
+  background: rgba(160, 55, 40, 0.06);
+  color: #8c3223;
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.editor-notice-success,
+.editor-notice-error {
+  margin-bottom: 18px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.editor-notice-success {
+  border: 1px solid rgba(44, 94, 77, 0.4);
+  background: rgba(44, 94, 77, 0.07);
+  color: var(--green);
+}
+
+.editor-notice-success a {
+  border-bottom: 1px solid currentColor;
+}
+
+.editor-notice-error {
+  border: 1px solid rgba(160, 55, 40, 0.4);
+  background: rgba(160, 55, 40, 0.06);
+  color: #8c3223;
+}
+
+@media (max-width: 720px) {
+  .editor-panel {
+    width: calc(100% - 32px);
+    padding: 22px;
+  }
+
+  .editor-panel-header {
+    flex-direction: column;
+  }
+}

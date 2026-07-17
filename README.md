@@ -34,23 +34,31 @@ npm run lint
 npm test
 ```
 
-## 每日更新
+## 每日更新（网页端编辑器）
 
-只需编辑 [`src/content/reviews.js`](src/content/reviews.js)：
+日常更新不再需要改代码：打开线上页面，点击页脚的「管理」小链接即可在网页上填写整条复盘（日期、标题、总结、观察-依据-风险-失效、如意金报价），点「提交并部署」后浏览器会直接把数据提交到本仓库的 `src/content/reviews.json`，GitHub Actions 自动重新构建，约 1–2 分钟后线上生效。
 
-1. 复制数组中最新的一篇并放到最前面。
-2. 修改日期、标题、总结和四段复盘内容。
-3. 从工商银行办理渠道人工记录积存价、赎回价和时间；不记录个人交易。
-4. 在本地预览，确认没有个人信息后提交到 GitHub。
+首次使用需要创建一个 GitHub Token（只需一次）：
 
-如意金记录建议保留四个字段：
+1. 打开 GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → Generate new token。
+2. Repository access 选择 **Only select repositories**，只勾选 `gold-journal`。
+3. Permissions → Repository permissions → **Contents** 设为 **Read and write**，其余保持 No access。
+4. 生成后把 Token 粘贴到页面「管理」面板中。Token 只保存在你自己浏览器的 localStorage，不会上传到任何服务器；不要在公共设备上保存，泄露时到 GitHub 撤销并重新生成即可。
 
-```js
-icbcQuote: {
-  accumulationPrice: "待填写",
-  redemptionPrice: "待填写",
-  recordedAt: "2026-07-16 20:30",
-  source: "工商银行办理渠道",
+编辑器约定：
+
+- 同一天重复提交会覆盖当天条目（按日期合并），漏掉的日期也可以改日期补写。
+- `displayDate` 由日期自动生成；如意金字段留空会回填「—」和「待记录」。
+- 不要在任何字段中填写持仓金额、克数、成本、收益或账户信息。
+
+也可以继续手动编辑 [`src/content/reviews.json`](src/content/reviews.json) 后提交，效果相同。如意金记录保留四个字段：
+
+```json
+"icbcQuote": {
+  "accumulationPrice": "待填写",
+  "redemptionPrice": "待填写",
+  "recordedAt": "2026-07-16 20:30",
+  "source": "工商银行办理渠道"
 }
 ```
 

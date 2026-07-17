@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import ReviewEditor from "./components/ReviewEditor";
 import TradingViewChart from "./components/TradingViewChart";
 import { goldFactors } from "./content/factors";
-import { latestReview, reviews } from "./content/reviews";
+import initialReviews from "./content/reviews.json";
 
 const ICBC_PRODUCT_URL =
   "https://www.icbc.com.cn/page/804349502953078784.html";
@@ -36,6 +37,8 @@ function SectionTitle({ number, eyebrow, title, description }) {
 
 function App() {
   const [beijingTime, setBeijingTime] = useState(() => new Date());
+  const [reviews, setReviews] = useState(initialReviews);
+  const latestReview = reviews[0];
 
   useEffect(() => {
     const timer = setInterval(() => setBeijingTime(new Date()), 30_000);
@@ -304,6 +307,8 @@ function App() {
           </div>
         </section>
       </main>
+
+      <ReviewEditor onSaved={setReviews} />
 
       <footer>
         <div className="brand footer-brand">
