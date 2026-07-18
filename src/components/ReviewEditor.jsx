@@ -5,6 +5,7 @@ import {
   TOKEN_KEY,
   getReviewsFile,
   putReviewsFile,
+  verifyWriteAccess,
 } from "../lib/github";
 import {
   emptyReview,
@@ -40,7 +41,7 @@ function reviewToForm(review) {
   };
 }
 
-function TokenSetup({ token, onSave, onClear }) {
+function TokenSetup({ token, verifying, onSave, onClear }) {
   const [draft, setDraft] = useState("");
 
   return (
@@ -50,6 +51,7 @@ function TokenSetup({ token, onSave, onClear }) {
         <strong> gold-journal </strong>
         一个仓库的 <strong>Contents 读写</strong> 权限。Token
         只保存在当前浏览器（localStorage），不会上传到任何服务器；请勿在公共设备上保存。
+        若使用隐私窗口，关闭窗口后需要重新粘贴。
       </p>
       {token ? (
         <p className="editor-hint">
@@ -67,13 +69,10 @@ function TokenSetup({ token, onSave, onClear }) {
         <button
           type="button"
           className="button button-primary"
-          disabled={!draft.trim()}
-          onClick={() => {
-            onSave(draft.trim());
-            setDraft("");
-          }}
+          disabled={!draft.trim() || verifying}
+          onClick={() => onSave(draft.trim(), () => setDraft(""))}
         >
-          保存 Token
+          {verifying ? "正在校验权限…" : "保存 Token"}
         </button>
         {token ? (
           <button type="button" className="button button-light" onClick={onClear}>
@@ -226,12 +225,30 @@ function ReviewEditor({ onSaved }) {
   const [token, setToken] = useState(readStoredToken);
   const [showTokenSetup, setShowTokenSetup] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(null);
   const [errors, setErrors] = useState([]);
   const [notice, setNotice] = useState(null);
 
-  const saveToken = (value) => {
+  const saveToken = async (value, onAccepted) => {
+    setVerifying(true);
+    setNotice(null);
+    try {
+      // 先做写权限探测，避免"能读不能写"的 Token 到提交那一步才报错。
+      await verifyWriteAccess(value);
+    } catch (error) {
+      setNotice({
+        kind: "error",
+        text:
+          error instanceof GitHubApiError
+            ? error.message
+            : "无法连接 GitHub 接口，请检查网络后重试。",
+      });
+      setVerifying(false);
+      return;
+    }
+    onAccepted?.();
     try {
       localStorage.setItem(TOKEN_KEY, value);
     } catch {
@@ -239,7 +256,11 @@ function ReviewEditor({ onSaved }) {
     }
     setToken(value);
     setShowTokenSetup(false);
-    setNotice(null);
+    setVerifying(false);
+    setNotice({
+      kind: "success",
+      text: "Token 校验通过：具备 gold-journal 仓库的 Contents 写入权限。",
+    });
     if (!form) {
       loadEditor(value);
     }
@@ -258,7 +279,6 @@ function ReviewEditor({ onSaved }) {
   const loadEditor = async (activeToken) => {
     setLoading(true);
     setErrors([]);
-    setNotice(null);
     try {
       const { reviews } = await getReviewsFile(activeToken);
       const today = todayInBeijing();
@@ -329,6 +349,7 @@ function ReviewEditor({ onSaved }) {
       onSaved(nextReviews);
       setNotice({
         kind: "success",
+        actions: true,
         text: "已提交 ✓ GitHub Actions 正在重新构建，约 1–2 分钟后线上更新。",
       });
     } catch (error) {
@@ -381,7 +402,7 @@ function ReviewEditor({ onSaved }) {
           role="status"
         >
           {notice.text}
-          {notice.kind === "success" ? (
+          {notice.actions ? (
             <>
               {" "}
               <a href={ACTIONS_URL} target="_blank" rel="noopener noreferrer">
@@ -393,7 +414,12 @@ function ReviewEditor({ onSaved }) {
       ) : null}
 
       {!token || showTokenSetup ? (
-        <TokenSetup token={token} onSave={saveToken} onClear={clearToken} />
+        <TokenSetup
+          token={token}
+          verifying={verifying}
+          onSave={saveToken}
+          onClear={clearToken}
+        />
       ) : null}
 
       {loading ? <p className="editor-hint">正在从 GitHub 加载最新数据…</p> : null}

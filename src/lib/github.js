@@ -26,15 +26,20 @@ export class GitHubApiError extends Error {
   }
 }
 
+const PERMISSION_HINT =
+  "创建 Token 时需要：Repository access 选 Only select repositories 并勾选 " +
+  "gold-journal；Permissions 里把 Contents 设为 Read and write。" +
+  "（页面默认的 Public repositories read-only 只能读、不能提交。）";
+
 function describeError(status) {
   if (status === 401) {
     return "Token 无效或已过期，请重新填写。";
   }
   if (status === 403) {
-    return "请求被拒绝，可能是 Token 权限不足或触发了接口限流。";
+    return `Token 没有写入权限或触发了接口限流。${PERMISSION_HINT}`;
   }
   if (status === 404) {
-    return "无权限或文件不存在，请检查 Token 是否授权 gold-journal 仓库的 Contents 读写。";
+    return `Token 无权访问该仓库或文件不存在。${PERMISSION_HINT}`;
   }
   if (status === 409 || status === 422) {
     return "内容已被其他提交修改，请重新保存一次。";
@@ -70,6 +75,32 @@ export async function getReviewsFile(token) {
     sha: payload.sha,
     reviews: JSON.parse(decodeBase64Utf8(payload.content)),
   };
+}
+
+// 校验 Token 是否具备 Contents 写入权限，但不产生任何真实提交：
+// 用一个必然不匹配的全零 sha 发起 PUT，有写权限时 GitHub 会先通过鉴权、
+// 再因 sha 冲突返回 409/422；没有写权限则直接返回 403/404。
+export async function verifyWriteAccess(token) {
+  const response = await fetch(CONTENTS_URL, {
+    method: "PUT",
+    headers: apiHeaders(token),
+    body: JSON.stringify({
+      message: "write-permission probe (never lands)",
+      content: "",
+      sha: "0000000000000000000000000000000000000000",
+      branch: BRANCH,
+    }),
+  });
+  if (response.ok || response.status === 409 || response.status === 422) {
+    return;
+  }
+  if (response.status === 403 || response.status === 404) {
+    throw new GitHubApiError(
+      response.status,
+      `这个 Token 只能读取、不能提交。${PERMISSION_HINT}`,
+    );
+  }
+  throw new GitHubApiError(response.status, describeError(response.status));
 }
 
 export async function putReviewsFile(token, reviews, sha, message) {
