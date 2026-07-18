@@ -511,6 +511,75 @@ footer {
   color: #2962ff;
 }
 
+.chart-fallback {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 32px clamp(24px, 6vw, 64px);
+}
+
+.chart-fallback-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.chart-fallback-note {
+  margin: 0;
+  max-width: 640px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.chart-fallback-quote {
+  display: grid;
+  margin: 8px 0 0;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  border: 1px solid var(--line);
+  background: var(--line);
+}
+
+.chart-fallback-quote > div {
+  padding: 14px 16px;
+  background: var(--paper-light);
+}
+
+.chart-fallback-quote dt {
+  margin: 0 0 6px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.chart-fallback-quote dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-fallback-retry {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 10px 22px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.chart-fallback-retry:hover {
+  background: var(--ink);
+  color: var(--paper-light);
+}
+
 .source-note {
   max-width: 900px;
   margin: 18px 0 0;
