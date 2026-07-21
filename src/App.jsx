@@ -38,7 +38,19 @@ function SectionTitle({ number, eyebrow, title, description }) {
 function App() {
   const [beijingTime, setBeijingTime] = useState(() => new Date());
   const [reviews, setReviews] = useState(initialReviews);
+  const [selectedDate, setSelectedDate] = useState(null);
   const latestReview = reviews[0];
+  const activeReview =
+    reviews.find((review) => review.date === selectedDate) ?? latestReview;
+  const isLatestActive = activeReview.date === latestReview.date;
+
+  const selectReview = (date) => {
+    setSelectedDate(date);
+    // 手机上归档列表在复盘卡片下方，选中后把卡片滚回视野。
+    document
+      .getElementById("review-note")
+      ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
 
   useEffect(() => {
     const timer = setInterval(() => setBeijingTime(new Date()), 30_000);
@@ -148,22 +160,33 @@ function App() {
           <SectionTitle
             number="02"
             eyebrow="DAILY REVIEW"
-            title="今日复盘"
+            title="每日复盘"
             description="沿着“观察—依据—风险—失效”写，给第二天的自己留下可检查的记录。"
           />
 
           <div className="review-layout">
-            <article className="review-card">
+            <article className="review-card" id="review-note">
               <div className="review-card-header">
                 <div>
-                  <p className="eyebrow">LATEST NOTE</p>
-                  <h3>{latestReview.title}</h3>
+                  <p className="eyebrow">
+                    {isLatestActive ? "LATEST NOTE" : "ARCHIVE NOTE"}
+                  </p>
+                  <h3>{activeReview.title}</h3>
                 </div>
-                <time dateTime={latestReview.date}>{latestReview.displayDate}</time>
+                <time dateTime={activeReview.date}>{activeReview.displayDate}</time>
               </div>
-              <p className="review-summary">{latestReview.summary}</p>
+              {!isLatestActive ? (
+                <button
+                  type="button"
+                  className="review-back-latest"
+                  onClick={() => setSelectedDate(null)}
+                >
+                  正在查看往期记录 · 回到最新 →
+                </button>
+              ) : null}
+              <p className="review-summary">{activeReview.summary}</p>
               <ol className="review-framework">
-                {latestReview.framework.map((item, index) => (
+                {activeReview.framework.map((item, index) => (
                   <li key={item.label}>
                     <span>{String(index + 1).padStart(2, "0")}</span>
                     <div>
@@ -178,12 +201,24 @@ function App() {
             <aside className="archive-card">
               <p className="eyebrow">ARCHIVE</p>
               <h3>复盘归档</h3>
-              <p>最新记录始终放在最前。随着每日更新，这里会成为可回看的判断档案。</p>
+              <p>点击任意日期，左侧会展示当天的完整复盘；最新记录始终排在最前。</p>
               <ul>
                 {reviews.map((review) => (
                   <li key={review.date}>
-                    <time dateTime={review.date}>{review.displayDate}</time>
-                    <span>{review.status}</span>
+                    <button
+                      type="button"
+                      className={
+                        review.date === activeReview.date
+                          ? "archive-item is-active"
+                          : "archive-item"
+                      }
+                      aria-current={review.date === activeReview.date}
+                      onClick={() => selectReview(review.date)}
+                    >
+                      <time dateTime={review.date}>{review.displayDate}</time>
+                      <span className="archive-item-status">{review.status}</span>
+                      <span className="archive-item-title">{review.title}</span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -309,7 +344,12 @@ function App() {
         </section>
       </main>
 
-      <ReviewEditor onSaved={setReviews} />
+      <ReviewEditor
+        onSaved={(nextReviews) => {
+          setReviews(nextReviews);
+          setSelectedDate(null);
+        }}
+      />
 
       <footer>
         <div className="brand footer-brand">

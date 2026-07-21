@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ACTIONS_URL,
   GitHubApiError,
@@ -220,6 +220,38 @@ function ReviewForm({ form, setForm, saving, errors, onSubmit }) {
   );
 }
 
+function SubmitSuccess({ date, onContinue, onClose }) {
+  return (
+    <div className="editor-success" role="status">
+      <span className="editor-success-icon" aria-hidden="true">
+        ✓
+      </span>
+      <h4>提交成功</h4>
+      <p>
+        {date} 的复盘已提交到 GitHub，自动构建约需 1–2 分钟。
+        线上页面稍后刷新即可看到；如果暂时没有变化，是页面缓存还没过期，
+        多等一会或强制刷新（Cmd/Ctrl + Shift + R）即可，不需要重新提交。
+      </p>
+      <div className="editor-success-actions">
+        <a
+          className="button button-light"
+          href={ACTIONS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          查看构建进度 ↗
+        </a>
+        <button type="button" className="button button-light" onClick={onContinue}>
+          继续编辑这条
+        </button>
+        <button type="button" className="button button-primary" onClick={onClose}>
+          完成
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ReviewEditor({ onSaved }) {
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState(readStoredToken);
@@ -230,6 +262,15 @@ function ReviewEditor({ onSaved }) {
   const [form, setForm] = useState(null);
   const [errors, setErrors] = useState([]);
   const [notice, setNotice] = useState(null);
+  const [submitted, setSubmitted] = useState(null);
+  const feedbackRef = useRef(null);
+
+  // 提交按钮在长表单底部，反馈却渲染在面板顶部；不滚动过去用户就看不到。
+  useEffect(() => {
+    if (notice || submitted) {
+      feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [notice, submitted]);
 
   const saveToken = async (value, onAccepted) => {
     setVerifying(true);
@@ -298,6 +339,7 @@ function ReviewEditor({ onSaved }) {
   const openEditor = () => {
     setOpen(true);
     setNotice(null);
+    setSubmitted(null);
     if (token) {
       loadEditor(token);
     } else {
@@ -310,6 +352,7 @@ function ReviewEditor({ onSaved }) {
     setForm(null);
     setErrors([]);
     setNotice(null);
+    setSubmitted(null);
     setShowTokenSetup(false);
   };
 
@@ -347,11 +390,7 @@ function ReviewEditor({ onSaved }) {
         }
       }
       onSaved(nextReviews);
-      setNotice({
-        kind: "success",
-        actions: true,
-        text: "已提交 ✓ GitHub Actions 正在重新构建，约 1–2 分钟后线上更新。",
-      });
+      setSubmitted({ date: entry.date });
     } catch (error) {
       if (error instanceof GitHubApiError && error.status === 401) {
         clearToken();
@@ -396,6 +435,7 @@ function ReviewEditor({ onSaved }) {
 
       {notice ? (
         <p
+          ref={feedbackRef}
           className={
             notice.kind === "success" ? "editor-notice-success" : "editor-notice-error"
           }
@@ -413,6 +453,16 @@ function ReviewEditor({ onSaved }) {
         </p>
       ) : null}
 
+      {submitted ? (
+        <div ref={feedbackRef}>
+          <SubmitSuccess
+            date={submitted.date}
+            onContinue={() => setSubmitted(null)}
+            onClose={closeEditor}
+          />
+        </div>
+      ) : null}
+
       {!token || showTokenSetup ? (
         <TokenSetup
           token={token}
@@ -424,7 +474,7 @@ function ReviewEditor({ onSaved }) {
 
       {loading ? <p className="editor-hint">正在从 GitHub 加载最新数据…</p> : null}
 
-      {token && form && !loading ? (
+      {token && form && !loading && !submitted ? (
         <ReviewForm
           form={form}
           setForm={setForm}

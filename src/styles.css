@@ -627,6 +627,22 @@ footer {
   white-space: nowrap;
 }
 
+.review-back-latest {
+  margin-top: 14px;
+  padding: 8px 14px;
+  border: 1px solid var(--line-strong);
+  background: rgba(234, 217, 180, 0.28);
+  color: var(--ink-soft);
+  font-family: var(--sans);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.review-back-latest:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
 .review-summary {
   margin: 28px 0 32px;
   padding: 20px 22px;
@@ -699,16 +715,49 @@ footer {
 }
 
 .archive-card li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 15px 0;
   border-bottom: 1px solid var(--line);
   font-size: 11px;
 }
 
-.archive-card li span {
+.archive-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  width: 100%;
+  padding: 13px 8px;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.archive-item:hover {
+  background: rgba(234, 217, 180, 0.25);
+}
+
+.archive-item.is-active {
+  background: rgba(234, 217, 180, 0.35);
+  box-shadow: inset 2px 0 0 var(--gold);
+}
+
+.archive-item time {
+  color: var(--ink-soft);
+}
+
+.archive-item-status {
   color: var(--gold);
+}
+
+.archive-item-title {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .method-note {
@@ -1405,6 +1454,47 @@ footer > a {
   border: 1px solid rgba(160, 55, 40, 0.4);
   background: rgba(160, 55, 40, 0.06);
   color: #8c3223;
+}
+
+.editor-success {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding: 28px;
+  border: 1px solid rgba(44, 94, 77, 0.4);
+  background: rgba(44, 94, 77, 0.07);
+}
+
+.editor-success-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  font-size: 20px;
+}
+
+.editor-success h4 {
+  margin: 0;
+  color: var(--green);
+  font-family: var(--serif);
+  font-size: 21px;
+}
+
+.editor-success p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.editor-success-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
 }
 
 @media (max-width: 720px) {
