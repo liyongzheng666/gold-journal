@@ -8,6 +8,13 @@ import {
   verifyWriteAccess,
 } from "../lib/github";
 import {
+  AI_PRESETS,
+  clearAiConfig,
+  polishFields,
+  readAiConfig,
+  saveAiConfig,
+} from "../lib/polish";
+import {
   emptyReview,
   normalizeReview,
   todayInBeijing,
@@ -84,7 +91,110 @@ function TokenSetup({ token, verifying, onSave, onClear }) {
   );
 }
 
-function ReviewForm({ form, setForm, saving, errors, onSubmit }) {
+function AiSetup({ config, onSave, onClear }) {
+  const initialProvider =
+    config?.provider && AI_PRESETS[config.provider] ? config.provider : "deepseek";
+  const [provider, setProvider] = useState(initialProvider);
+  const [baseUrl, setBaseUrl] = useState(
+    config?.baseUrl ?? AI_PRESETS[initialProvider].baseUrl,
+  );
+  const [model, setModel] = useState(
+    config?.model ?? AI_PRESETS[initialProvider].model,
+  );
+  const [apiKey, setApiKey] = useState(config?.apiKey ?? "");
+
+  const pickProvider = (next) => {
+    setProvider(next);
+    setBaseUrl(AI_PRESETS[next].baseUrl);
+    setModel(AI_PRESETS[next].model);
+  };
+
+  const preset = AI_PRESETS[provider];
+
+  return (
+    <div className="editor-ai-setup">
+      <p className="editor-hint">
+        AI 润色为可选功能：内容会发送给你所选的 AI 服务商，密钥只保存在当前浏览器
+        （localStorage），不会上传到本站仓库。调用会消耗你在该服务商的额度。
+      </p>
+      <div className="editor-grid">
+        <label>
+          服务商
+          <select
+            value={provider}
+            onChange={(event) => pickProvider(event.target.value)}
+          >
+            {Object.entries(AI_PRESETS).map(([key, item]) => (
+              <option key={key} value={key}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          模型
+          <input
+            type="text"
+            value={model}
+            onChange={(event) => setModel(event.target.value)}
+            placeholder="deepseek-chat"
+          />
+        </label>
+      </div>
+      <label>
+        接口地址（Base URL）
+        <input
+          type="text"
+          value={baseUrl}
+          onChange={(event) => setBaseUrl(event.target.value)}
+          placeholder="https://api.deepseek.com"
+        />
+      </label>
+      <label>
+        API Key
+        <input
+          type="password"
+          value={apiKey}
+          onChange={(event) => setApiKey(event.target.value)}
+          placeholder={provider === "claude" ? "sk-ant-…" : "sk-…"}
+        />
+      </label>
+      {preset.keyUrl ? (
+        <p className="editor-hint">
+          还没有密钥？{" "}
+          <a href={preset.keyUrl} target="_blank" rel="noopener noreferrer">
+            前往服务商官网申请 ↗
+          </a>
+        </p>
+      ) : null}
+      <div className="editor-token-row">
+        <button
+          type="button"
+          className="button button-primary"
+          disabled={!apiKey.trim() || !baseUrl.trim() || !model.trim()}
+          onClick={() =>
+            onSave({
+              provider,
+              kind: preset.kind,
+              baseUrl: baseUrl.trim(),
+              model: model.trim(),
+              apiKey: apiKey.trim(),
+            })
+          }
+        >
+          保存 AI 设置
+        </button>
+        {config ? (
+          <button type="button" className="button button-light" onClick={onClear}>
+            清除 AI 设置
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ReviewForm({ form, setForm, saving, errors, onSubmit, aiBar }) {
   const setField = (field, value) => setForm({ ...form, [field]: value });
   const setFrameworkText = (index, text) =>
     setForm({
@@ -213,6 +323,8 @@ function ReviewForm({ form, setForm, saving, errors, onSubmit }) {
         </ul>
       ) : null}
 
+      {aiBar}
+
       <button type="submit" className="button button-primary" disabled={saving}>
         {saving ? "正在提交到 GitHub…" : "提交并部署"}
       </button>
@@ -263,6 +375,10 @@ function ReviewEditor({ onSaved }) {
   const [errors, setErrors] = useState([]);
   const [notice, setNotice] = useState(null);
   const [submitted, setSubmitted] = useState(null);
+  const [aiConfig, setAiConfig] = useState(readAiConfig);
+  const [showAiSetup, setShowAiSetup] = useState(false);
+  const [polishing, setPolishing] = useState(false);
+  const [prePolish, setPrePolish] = useState(null);
   const feedbackRef = useRef(null);
 
   // 提交按钮在长表单底部，反馈却渲染在面板顶部；不滚动过去用户就看不到。
@@ -320,6 +436,7 @@ function ReviewEditor({ onSaved }) {
   const loadEditor = async (activeToken) => {
     setLoading(true);
     setErrors([]);
+    setPrePolish(null);
     try {
       const { reviews } = await getReviewsFile(activeToken);
       const today = todayInBeijing();
@@ -354,6 +471,86 @@ function ReviewEditor({ onSaved }) {
     setNotice(null);
     setSubmitted(null);
     setShowTokenSetup(false);
+    setShowAiSetup(false);
+    setPrePolish(null);
+  };
+
+  const saveAiSettings = (config) => {
+    saveAiConfig(config);
+    setAiConfig(config);
+    setShowAiSetup(false);
+    setNotice({ kind: "success", text: "AI 设置已保存，可以开始润色了。" });
+  };
+
+  const clearAiSettings = () => {
+    clearAiConfig();
+    setAiConfig(null);
+    setShowAiSetup(false);
+  };
+
+  const polish = async () => {
+    if (!aiConfig) {
+      setShowAiSetup(true);
+      return;
+    }
+    // 只把用户实际写了内容的字段发出去，占位文本不参与润色。
+    const fields = {};
+    if (form.title.trim()) {
+      fields["标题"] = form.title;
+    }
+    if (form.summary.trim()) {
+      fields["总结"] = form.summary;
+    }
+    for (const item of form.framework) {
+      if (item.text.trim()) {
+        fields[item.label] = item.text;
+      }
+    }
+    if (Object.keys(fields).length === 0) {
+      setNotice({ kind: "error", text: "先写点内容，再让 AI 润色。" });
+      return;
+    }
+
+    setPolishing(true);
+    setNotice(null);
+    try {
+      const snapshot = form;
+      const polished = await polishFields(aiConfig, fields);
+      const pick = (key, fallback) =>
+        typeof polished[key] === "string" && polished[key].trim()
+          ? polished[key].trim()
+          : fallback;
+      setForm({
+        ...form,
+        title: pick("标题", form.title),
+        summary: pick("总结", form.summary),
+        framework: form.framework.map((item) =>
+          fields[item.label]
+            ? { ...item, text: pick(item.label, item.text) }
+            : item,
+        ),
+      });
+      setPrePolish(snapshot);
+      setNotice({
+        kind: "success",
+        text: "AI 润色完成：请核对数字、日期与结论未被改动，确认后再提交；不满意可点「撤销润色」。",
+      });
+    } catch (error) {
+      setNotice({
+        kind: "error",
+        text: error instanceof Error ? error.message : "AI 润色失败，请重试。",
+      });
+    } finally {
+      setPolishing(false);
+    }
+  };
+
+  const undoPolish = () => {
+    if (prePolish) {
+      setForm(prePolish);
+      setPrePolish(null);
+      setNotice({ kind: "success", text: "已撤销润色，恢复为你的原文。" });
+    }
   };
 
   const submit = async () => {
@@ -472,6 +669,14 @@ function ReviewEditor({ onSaved }) {
         />
       ) : null}
 
+      {showAiSetup ? (
+        <AiSetup
+          config={aiConfig}
+          onSave={saveAiSettings}
+          onClear={clearAiSettings}
+        />
+      ) : null}
+
       {loading ? <p className="editor-hint">正在从 GitHub 加载最新数据…</p> : null}
 
       {token && form && !loading && !submitted ? (
@@ -481,6 +686,38 @@ function ReviewEditor({ onSaved }) {
           saving={saving}
           errors={errors}
           onSubmit={submit}
+          aiBar={
+            <div className="editor-ai-bar">
+              <button
+                type="button"
+                className="button button-light"
+                disabled={polishing || saving}
+                onClick={polish}
+              >
+                {polishing ? "AI 润色中…" : "✦ AI 润色"}
+              </button>
+              {prePolish ? (
+                <button
+                  type="button"
+                  className="button button-light"
+                  disabled={polishing}
+                  onClick={undoPolish}
+                >
+                  撤销润色
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="text-link"
+                onClick={() => setShowAiSetup((value) => !value)}
+              >
+                AI 设置
+              </button>
+              <span className="editor-ai-hint">
+                可选：让 AI 把表达改通顺，不改数字与事实。
+              </span>
+            </div>
+          }
         />
       ) : null}
     </section>

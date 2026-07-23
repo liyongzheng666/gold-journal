@@ -4,6 +4,12 @@ import TradingViewChart from "./components/TradingViewChart";
 import { goldFactors } from "./content/factors";
 import initialReviews from "./content/reviews.json";
 
+const PLACEHOLDER_TEXTS = new Set(["", "—", "待记录", "待填写", "待补充", "暂无"]);
+
+function isFilled(text) {
+  return typeof text === "string" && !PLACEHOLDER_TEXTS.has(text.trim());
+}
+
 const ICBC_PRODUCT_URL =
   "https://www.icbc.com.cn/page/804349502953078784.html";
 const ICBC_AGREEMENT_URL =
@@ -184,18 +190,43 @@ function App() {
                   正在查看往期记录 · 回到最新 →
                 </button>
               ) : null}
-              <p className="review-summary">{activeReview.summary}</p>
-              <ol className="review-framework">
-                {activeReview.framework.map((item, index) => (
-                  <li key={item.label}>
-                    <span>{String(index + 1).padStart(2, "0")}</span>
-                    <div>
-                      <h4>{item.label}</h4>
-                      <p>{item.text}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
+              {isFilled(activeReview.summary) ? (
+                <p className="review-summary">{activeReview.summary}</p>
+              ) : null}
+              {(() => {
+                const filled = activeReview.framework.filter((item) =>
+                  isFilled(item.text),
+                );
+                const missing = activeReview.framework
+                  .filter((item) => !isFilled(item.text))
+                  .map((item) => item.label);
+                return (
+                  <>
+                    {filled.length > 0 ? (
+                      <ol className="review-framework">
+                        {filled.map((item, index) => (
+                          <li key={item.label}>
+                            <span>{String(index + 1).padStart(2, "0")}</span>
+                            <div>
+                              <h4>{item.label}</h4>
+                              <p>{item.text}</p>
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    ) : (
+                      <p className="review-framework-empty">
+                        这一天的「观察—依据—风险—失效」还没有展开，只保留了总结。
+                      </p>
+                    )}
+                    {filled.length > 0 && missing.length > 0 ? (
+                      <p className="review-framework-note">
+                        未记录：{missing.join(" · ")}
+                      </p>
+                    ) : null}
+                  </>
+                );
+              })()}
             </article>
 
             <aside className="archive-card">

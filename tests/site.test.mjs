@@ -81,6 +81,37 @@ test("review helpers validate, normalize and upsert entries", async () => {
   assert.equal(replaced[0].title, "改后的标题");
 });
 
+test("AI polish keeps keys unchanged, stores nothing in the repo, and parses fenced JSON", async () => {
+  const polish = await readFile(path.join(root, "src/lib/polish.js"), "utf8");
+
+  // 密钥只进 localStorage，提示词必须要求"不改事实"
+  assert.match(polish, /localStorage/);
+  assert.match(polish, /严禁改动事实/);
+  assert.doesNotMatch(polish, /sk-[A-Za-z0-9]{20}/, "no real API key committed");
+
+  const { AI_PRESETS, readAiConfig } = await import("../src/lib/polish.js");
+  assert.ok(AI_PRESETS.deepseek.baseUrl.startsWith("https://"));
+  assert.equal(AI_PRESETS.claude.kind, "anthropic");
+  // Node 环境没有 localStorage，读取配置必须安全返回 null 而不是抛错
+  assert.equal(readAiConfig(), null);
+});
+
+test("editor and review layout ship the new interactions", async () => {
+  const editor = await readFile(
+    path.join(root, "src/components/ReviewEditor.jsx"),
+    "utf8",
+  );
+  const app = await readFile(path.join(root, "src/App.jsx"), "utf8");
+  const css = await readFile(path.join(root, "src/styles.css"), "utf8");
+
+  // 提交成功必须有醒目反馈；归档可点击回看；空维度不硬占版面
+  assert.match(editor, /SubmitSuccess/);
+  assert.match(editor, /撤销润色/);
+  assert.match(app, /archive-item/);
+  assert.match(app, /未记录：/);
+  assert.match(css, /white-space: pre-line/);
+});
+
 test("public copy distinguishes the reference market from the bank product", async () => {
   const app = await readFile(path.join(root, "src/App.jsx"), "utf8");
 
